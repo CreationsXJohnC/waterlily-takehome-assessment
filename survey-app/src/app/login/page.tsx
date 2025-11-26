@@ -5,11 +5,14 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [redirect, setRedirect] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const m = params.get("m");
     if (m === "signedout") setError("You have been signed out.");
+    const r = params.get("redirect");
+    setRedirect(r);
   }, []);
 
   async function onSubmit(e: React.FormEvent) {
@@ -25,9 +28,18 @@ export default function LoginPage() {
       setError(data.error ?? "Login failed");
       return;
     }
-    const params = new URLSearchParams(window.location.search);
-    const redirect = params.get("redirect") || "/survey";
-    window.location.href = redirect;
+    // Prefer returning to last page via ?redirect=…; otherwise, fallback to progress-based destination
+    try {
+      if (redirect) {
+        window.location.href = redirect;
+        return;
+      }
+      const raw = localStorage.getItem("intake_answers");
+      const hasStarted = raw ? Object.keys(JSON.parse(raw)).length > 0 : false;
+      window.location.href = hasStarted ? "/survey/review" : "/";
+    } catch {
+      window.location.href = redirect || "/";
+    }
   }
 
   return (

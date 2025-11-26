@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState, use as usePromise } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { QUESTIONS, ChoiceQuestion } from "@/lib/surveyQuestions";
 
 // QUESTIONS imported from shared module
@@ -30,7 +30,9 @@ export default function SurveyStepPage({ params }: { params: Promise<{ step: str
   const question = useMemo(() => QUESTIONS[stepIndex], [stepIndex]);
   const [answers, setAnswers] = usePersistedAnswers();
   const [status, setStatus] = useState<string>("");
+  const [isAuthed, setIsAuthed] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
 
   function setAnswer(value: string) {
     setAnswers((prev) => ({ ...prev, [question.id]: value }));
@@ -42,7 +44,7 @@ export default function SurveyStepPage({ params }: { params: Promise<{ step: str
   }
 
   function prevHref(): string | null {
-    if (stepIndex === 0) return "/survey"; // go back to consent page
+    if (stepIndex === 0) return "/"; // go back to home consent
     return `/survey/${stepIndex}`;
   }
 
@@ -54,8 +56,21 @@ export default function SurveyStepPage({ params }: { params: Promise<{ step: str
   const currentValue = answers[question.id] ?? "";
   const showConsentExit = question.id === 1 && currentValue === "No";
 
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const res = await fetch("/api/auth/status", { cache: "no-store" });
+        const data = await res.json();
+        setIsAuthed(!!data.authenticated);
+      } catch {
+        setIsAuthed(false);
+      }
+    };
+    check();
+  }, []);
+
   return (
-    <main className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+    <main className="min-h-screen bg-purple-50 flex items-center justify-center p-6">
       <div className="w-full max-w-2xl bg-white p-6 rounded shadow">
         <h1 className="text-2xl font-bold mb-2">Intake Survey</h1>
         <p className="text-gray-600 mb-4">Question {stepIndex + 1} of {QUESTIONS.length}</p>
@@ -132,10 +147,16 @@ export default function SurveyStepPage({ params }: { params: Promise<{ step: str
 
         <div className="mt-8 flex flex-col items-center gap-2">
           <div className="flex gap-3">
-            <Link href="/signup" className="px-4 py-2 rounded border border-gray-300">Sign Up</Link>
-            <Link href="/login" className="px-4 py-2 rounded border border-gray-300">Log In</Link>
+            {isAuthed ? (
+              <span className="px-4 py-2 rounded border border-gray-300 bg-gray-100 text-gray-600 cursor-not-allowed">Logged In</span>
+            ) : (
+              <>
+                <Link href={`/signup?redirect=${encodeURIComponent(pathname)}`} className="px-4 py-2 rounded border border-gray-300">Sign Up</Link>
+                <Link href={`/login?redirect=${encodeURIComponent(pathname)}`} className="px-4 py-2 rounded border border-gray-300">Log In</Link>
+              </>
+            )}
           </div>
-          <p className="text-xs text-gray-500 mt-1">Sign in to submit your answers.</p>
+          <p className="text-xs text-gray-500 mt-1">{isAuthed ? "You are logged in." : "Sign in to submit your answers."}</p>
         </div>
       </div>
     </main>

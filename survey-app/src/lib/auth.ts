@@ -19,14 +19,16 @@ export function verifyToken(token: string | undefined): AuthPayload | null {
   }
 }
 
-export function getAuthPayload() {
-  const token = cookies().get(TOKEN_NAME)?.value;
+export async function getAuthPayload() {
+  const jar = await cookies();
+  const token = jar.get(TOKEN_NAME)?.value;
   return verifyToken(token);
 }
 
-export function setAuthCookie(payload: AuthPayload) {
+export async function setAuthCookie(payload: AuthPayload) {
   const token = signToken(payload);
-  cookies().set({
+  const jar = await cookies();
+  jar.set({
     name: TOKEN_NAME,
     value: token,
     httpOnly: true,
@@ -37,6 +39,7 @@ export function setAuthCookie(payload: AuthPayload) {
   });
 }
 
-export function clearAuthCookie() {
-  cookies().set({ name: TOKEN_NAME, value: "", path: "/", maxAge: 0 });
+export async function clearAuthCookie() {
+  const jar = await cookies();
+  jar.set({ name: TOKEN_NAME, value: "", path: "/", maxAge: 0 });
 }

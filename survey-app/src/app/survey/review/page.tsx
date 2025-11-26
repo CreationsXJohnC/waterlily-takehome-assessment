@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import { QUESTIONS } from "@/lib/surveyQuestions";
 import { useRouter } from "next/navigation";
 
@@ -17,6 +18,7 @@ export default function SurveyReviewPage() {
   });
   const [mounted, setMounted] = useState(false);
   const [isAuthed, setIsAuthed] = useState(false);
+  const pathname = usePathname();
   const router = useRouter();
   useEffect(() => {
     setMounted(true);
@@ -54,7 +56,7 @@ export default function SurveyReviewPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+    <main className="min-h-screen bg-purple-50 flex items-center justify-center p-6">
       <div className="w-full max-w-3xl bg-white p-6 rounded shadow">
         <h1 className="text-2xl font-bold mb-2">Review Your Answers</h1>
         <p className="text-gray-600 mb-4">Take a moment to verify your responses. You can edit any question.</p>
@@ -87,13 +89,51 @@ export default function SurveyReviewPage() {
           <div className="flex gap-3 items-center">
             <button
               disabled={!isComplete || !isAuthed}
-              onClick={() => router.push("/responses")}
+              onClick={async () => {
+                if (!isComplete || !isAuthed) return;
+                try {
+                  // Fetch or create the survey and map labels to IDs
+                  const surveyRes = await fetch("/api/survey", { cache: "no-store" });
+                  if (!surveyRes.ok) {
+                    alert("Unable to load survey for submission.");
+                    return;
+                  }
+                  const survey = await surveyRes.json();
+                  const byLabel: Record<string, number> = {};
+                  for (const q of survey.questions ?? []) byLabel[q.label] = q.id;
+                  const payload = {
+                    surveyId: survey.id,
+                    answers: QUESTIONS.map((q) => ({
+                      questionId: byLabel[q.label],
+                      value: String(answers[q.id] ?? ""),
+                    })),
+                  };
+                  const submitRes = await fetch("/api/survey/submit", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                  });
+                  if (!submitRes.ok) {
+                    alert("Submission failed. Please try again.");
+                    return;
+                  }
+                  router.push("/survey/success");
+                } catch {
+                  alert("An error occurred during submission.");
+                }
+              }}
               className={`px-4 py-2 rounded ${!isComplete || !isAuthed ? "bg-gray-300 cursor-not-allowed" : "bg-blue-600 text-white"}`}
             >
               Submit
             </button>
-            <Link href="/signup" className="px-4 py-2 rounded border border-gray-300">Sign Up</Link>
-            <Link href="/login" className="px-4 py-2 rounded border border-gray-300">Log In</Link>
+            {isAuthed ? (
+              <span className="px-4 py-2 rounded border border-gray-300 bg-gray-100 text-gray-600 cursor-not-allowed">Logged In</span>
+            ) : (
+              <>
+                <Link href={`/signup?redirect=${encodeURIComponent(pathname)}`} className="px-4 py-2 rounded border border-gray-300">Sign Up</Link>
+                <Link href={`/login?redirect=${encodeURIComponent(pathname)}`} className="px-4 py-2 rounded border border-gray-300">Log In</Link>
+              </>
+            )}
           </div>
         </div>
         <p className="text-base text-black mt-2">

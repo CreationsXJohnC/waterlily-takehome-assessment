@@ -24,10 +24,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}> 
+        <div className="flex-1">
+          {children}
+        </div>
+        <footer className="border-t bg-white text-center text-xs text-gray-600 py-4">
+          © Waterlily Caregiving 2025. All Rights Reserved.
+        </footer>
       </body>
     </html>
   );

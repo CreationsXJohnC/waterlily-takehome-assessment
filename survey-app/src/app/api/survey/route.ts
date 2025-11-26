@@ -1,27 +1,37 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthPayload } from "@/lib/auth";
+import { QUESTIONS } from "@/lib/surveyQuestions";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const auth = getAuthPayload();
+  const auth = await getAuthPayload();
   if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  let survey = await prisma.survey.findFirst({ include: { questions: true } });
+  // Ensure a survey exists that matches the frontend QUESTIONS
+  let survey = await prisma.survey.findFirst({
+    where: { title: "Intake Survey" },
+    include: { questions: true },
+  });
+
   if (!survey) {
     survey = await prisma.survey.create({
       data: {
-        title: "Demo Intake Survey",
-        description: "Please fill in your demographic and health information.",
+        title: "Intake Survey",
+        description: "Intake survey capturing demographics and health information.",
         questions: {
-          create: [
-            { label: "Full Name", type: "text", required: true },
-            { label: "Age", type: "number", required: true },
-            { label: "Primary Concern", type: "text", required: false },
-          ],
+          create: QUESTIONS.map((q) => ({
+            label: q.label,
+            type: q.type === "choice" ? "select" : q.type,
+            required: q.required,
+            options: ("options" in q && q.type === "choice") ? q.options.join(",") : null,
+          })),
         },
       },
       include: { questions: true },
     });
   }
+
   return NextResponse.json(survey);
 }

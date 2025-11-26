@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
 import { getAuthPayload } from "@/lib/auth";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 export async function GET() {
-  // Check auth via HTTP-only cookie on the server
-  const payload = getAuthPayload();
-  return NextResponse.json({ authenticated: !!payload });
+  try {
+    const payload = await getAuthPayload();
+    if (!payload) return NextResponse.json({ authenticated: false });
+    return NextResponse.json({ authenticated: true, userId: payload.userId });
+  } catch {
+    return NextResponse.json({ authenticated: false });
+  }
 }

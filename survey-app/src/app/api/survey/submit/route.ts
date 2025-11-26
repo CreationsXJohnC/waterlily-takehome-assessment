@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthPayload } from "@/lib/auth";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
-  const auth = getAuthPayload();
+  const auth = await getAuthPayload();
   if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { surveyId, answers } = await req.json();
   if (!surveyId || !Array.isArray(answers)) {
