@@ -1,0 +1,59 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  email        String    @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime  @default(now())
+  responses    Response[]
+}
+
+model Survey {
+  id          Int        @id @default(autoincrement())
+  title       String
+  description String
+  createdAt   DateTime   @default(now())
+  questions   Question[]
+  responses   Response[]
+}
+
+model Question {
+  id        Int     @id @default(autoincrement())
+  surveyId  Int
+  survey    Survey  @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  label     String
+  type      String  // text | number | select
+  required  Boolean @default(false)
+  options   String? // optional comma-separated options for select
+  answers   Answer[]
+}
+
+model Response {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  surveyId  Int
+  survey    Survey    @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  answers   Answer[]
+}
+
+model Answer {
+  id         Int      @id @default(autoincrement())
+  responseId Int
+  response   Response @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  questionId Int
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  value      String
+}
