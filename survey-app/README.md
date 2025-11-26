@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Survey App
+
+A multi-page intake survey built with Next.js (App Router). It includes a consent screen, seven-question flow, a review step, local persistence, and auth-gated submission.
+
+## Features
+
+- Multi-step survey with 7 questions, one per page
+- Dedicated consent page before starting the survey
+- Local persistence of answers in `localStorage` (`intake_answers`)
+- Review page with edit links back to each step
+- Required-answer highlighting and submit gating
+- Auth requirement to submit responses
+
+## Routes
+
+- `/survey` — Consent page (Yes/No). Selecting “Yes” starts the survey and clears any previous answers.
+- `/survey/[step]` — Steps 1–7. Answers are saved locally as you type/select.
+- `/survey/review` — Review all answers, edit any step, and submit.
+- `/responses` — Protected route; requires authentication (middleware enforced).
+- API: `/api/auth/status` — Returns `{ authenticated: boolean }` based on server-side cookie.
 
 ## Getting Started
 
-First, run the development server:
+1) Install dependencies and run the dev server:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000` in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+2) Configure auth (optional for local preview, recommended):
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Set `JWT_SECRET` in your environment (e.g., `.env.local`). Default is `dev-secret-change-me`.
 
-## Learn More
+## Behavior Details
 
-To learn more about Next.js, take a look at the following resources:
+- Answers persist in `localStorage` under the key `intake_answers`.
+- The review page shows a “Required” badge for any required question without an answer and disables the `Submit` button until all required answers are filled and the user is signed in.
+- `Submit` navigates to `/responses`. Unauthenticated users are redirected to `/login?redirect=/responses` by middleware.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Tech Notes
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Next.js App Router with client components for survey pages.
+- Auth utilities live in `src/lib/auth.ts` and are checked server-side in `src/middleware.ts`.
+- Survey questions are centralized in `src/lib/surveyQuestions.ts` and imported by both the step and review pages.
 
-## Deploy on Vercel
+## Contributing
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Keep question updates in `src/lib/surveyQuestions.ts` so step and review pages stay in sync.
+- Avoid storing PII in localStorage beyond the survey responses during development.
