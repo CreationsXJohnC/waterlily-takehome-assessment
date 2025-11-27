@@ -15,6 +15,31 @@ function pickDatabaseUrl() {
 
 const isVercel = process.env.VERCEL === "1";
 const url = pickDatabaseUrl();
+function pickSource(u) {
+  if (u && process.env.DATABASE_URL === u) return "DATABASE_URL";
+  if (u && process.env.POSTGRES_URL_NON_POOLING === u) return "POSTGRES_URL_NON_POOLING";
+  if (u && process.env.POSTGRES_URL === u) return "POSTGRES_URL";
+  return "unknown";
+}
+function describeUrl(u) {
+  try {
+    const parsed = new URL(u);
+    const host = parsed.hostname;
+    const port = parsed.port || "5432";
+    const db = (parsed.pathname || "/").replace(/^\//, "") || "(none)";
+    const schema = parsed.searchParams.get("schema") || "public";
+    return { host, port, db, schema };
+  } catch {
+    return { host: "(unparsed)", port: "?", db: "?", schema: "public" };
+  }
+}
+const src = pickSource(url);
+const meta = url ? describeUrl(url) : null;
+if (meta && src !== "unknown") {
+  console.log(
+    `[db-push-if-url] Using DB URL from ${src}: host=${meta.host} port=${meta.port} db=${meta.db} schema=${meta.schema}`
+  );
+}
 if (!url) {
   if (isVercel) {
     console.error(
