@@ -9,7 +9,7 @@
 - Backend: Next.js API routes; Prisma Client for data access
 - Database: PostgreSQL (Vercel Postgres or standard Postgres)
 - ORM: `Prisma 6.19.0`; generator output at `src/generated/prisma`
-- Prisma Configuration: `prisma/schema.prisma` + `prisma.config.ts` (URL resolution)
+- Prisma Datasource: `prisma/schema.prisma` uses `env("DATABASE_URL")`; no `prisma.config.ts`
 - Build: `node scripts/db-push-if-url.js && next build` (conditional `prisma db push`)
 - Deployment: Vercel-only; Postgres URL from `DATABASE_URL` (postgres scheme)
 - Env Vars: `DATABASE_URL`, `JWT_SECRET`; optional `POSTGRES_URL(_NON_POOLING)`
@@ -24,7 +24,7 @@
   - `Response` ↔ `Answer` (1:N)
   - `Answer` ↔ `Question` (N:1)
   - Cascade deletes on relations ensure orphan-free cleanup.
-- Database provider is PostgreSQL. The schema uses a placeholder URL to satisfy early validation, while `prisma.config.ts` resolves the real connection string from environment variables. The build script runs `prisma db push` only when a valid `postgres://`/`postgresql://` URL is available, avoiding failures in environments where vars aren’t injected during the install phase.
+Database provider is PostgreSQL. The Prisma datasource reads directly from `env("DATABASE_URL")`. The build script (`scripts/db-push-if-url.js`) attempts `prisma migrate deploy` and falls back to `prisma db push` only when a valid Postgres URL is present; if the URL is missing or points to an invalid host, the build fails fast with a clear log message.
 - Deployment is streamlined for Vercel:
   - Provision Postgres and expose vars in Project → Storage.
   - Set `DATABASE_URL` to a `postgres://` (not `prisma://`).
@@ -39,6 +39,27 @@
   - Sensitive credentials should be rotated if exposed; update `DATABASE_URL` accordingly.
 
 A multi-page intake survey built with Next.js (App Router). It includes a consent screen, seven-question flow, a review step, local persistence, and auth-gated submission.
+
+## Deployment Fixes & Summary
+
+- Removed legacy `vercel.json` `functions` pattern (`api/**`) to align with App Router structure under `src/app/api/...`.
+- Pinned Node.js to `20.x` in `package.json` for stable builds; optionally mirror in Vercel Project Settings.
+- Prisma updated to use `env("DATABASE_URL")` in `prisma/schema.prisma`; deleted `prisma.config.ts` so the CLI respects environment variables.
+- Build hardening via `scripts/db-push-if-url.js`:
+  - Fails builds if `DATABASE_URL` is missing or clearly invalid.
+  - Tries `prisma migrate deploy`; falls back to `prisma db push` with concise `[db-push-if-url]` logs.
+- Runtime resilience with `ensureSchema()` across DB-touching routes to auto-apply bundled migration SQL when tables are missing.
+- Bundled migration artifacts with `outputFileTracingIncludes` in `next.config.ts` for reliable serverless execution.
+- Cleaned up noise files: removed `help`, `help-wal`, and `README.init.md`.
+- Vercel Project Settings:
+  - Root Directory: `survey-app`
+  - Build Command: `npm run build`
+  - Node.js Version: `20.x`
+  - Redeploy with “Clear build cache” whenever env vars change
+
+### Verification After Deploy
+- Health: `GET /api/health/db` should return `{ ok: true, datasourceUrlDetected: true }`.
+- Script: `BASE_URL=https://<your-domain> npm run verify` to test signup/login, survey fetch, submission, and fetching responses.
 
 ## Features
 
