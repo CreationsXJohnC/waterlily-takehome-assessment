@@ -2,16 +2,16 @@ import { createRequire } from "module";
 
 const globalForPrisma = global as unknown as { prisma?: any };
 
-function resolveDatasourceUrl(): string {
-  // Prefer Postgres URLs in production; allow libsql:// during local dev.
+ function resolveDatasourceUrl(): string {
+  // Prefer only Postgres URLs for this app (production and local).
   const candidates = [
     process.env.DATABASE_URL,
     process.env.POSTGRES_URL_NON_POOLING,
     process.env.POSTGRES_URL,
   ].filter(Boolean) as string[];
-  const chosen = candidates.find((u) => /^postgres(ql)?:\/\//.test(u) || u.startsWith("libsql://") || u.startsWith("file:"));
+  const chosen = candidates.find((u) => /^postgres(ql)?:\/\//.test(u));
   return chosen || "";
-}
+ }
 
 function createPrisma() {
   // Ensure Prisma uses the Node-API engine locally instead of the "client" engine.
@@ -20,38 +20,17 @@ function createPrisma() {
     process.env.PRISMA_CLIENT_ENGINE_TYPE = "library";
   }
   const require = createRequire(import.meta.url);
-  // Use eval("require") to prevent Next/Turbopack from statically analyzing
-  // libSQL dependencies during local dev with SQLite.
-  const dynamicRequire = (id: string) => (eval("require") as any)(id);
   const url = resolveDatasourceUrl();
   let adapter: any = undefined;
 
-  if (url && url.startsWith("libsql://")) {
-    try {
-      const libsql = dynamicRequire("@libsql/client");
-      const { createClient } = libsql;
-      const { PrismaLibSQL } = dynamicRequire("@prisma/adapter-libsql");
-      const libsqlClient = createClient({
-        url,
-        authToken: process.env.LIBSQL_AUTH_TOKEN,
-      });
-      adapter = new PrismaLibSQL(libsqlClient);
-    } catch {
-      adapter = undefined;
-    }
+  // Ensure Prisma picks up the URL via env for any internal validation paths.
+  if (url && !process.env.DATABASE_URL) {
+    process.env.DATABASE_URL = url;
   }
 
-  // Load PrismaClient after environment is configured to avoid defaulting to the "client" engine.
-  const { PrismaClient } = (eval("require") as any)("../generated/prisma/client");
-
-  if (adapter) {
-    return new PrismaClient({
-      adapter,
-      log: ["error"],
-    });
-  }
-
-  // Without libSQL adapter, fall back to a plain client with runtime datasource URL override.
+  // Load PrismaClient from the standard package to ensure Vercel bundling works.
+  const { PrismaClient } = require("@prisma/client");
+  // Plain client with runtime datasource URL override.
   const client = new PrismaClient({
     log: ["error"],
     datasourceUrl: url || undefined,
@@ -59,5 +38,21 @@ function createPrisma() {
   return client;
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrisma();
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+// Lazy getter to avoid throwing during module evaluation when DB URL is missing.
+// This allows API routes to catch and return clear JSON errors instead of a generic 500 page.
+export function getPrisma() {
+  const url = resolveDatasourceUrl();
+  if (!url) {
+    const err: any = new Error("Missing DATABASE_URL/POSTGRES_URL environment variable.");
+    err.code = "MISSING_DATABASE_URL";
+    throw err;
+  }
+  // Set env for downstream consumers if not already set.
+  if (!process.env.DATABASE_URL) {
+    process.env.DATABASE_URL = url;
+  }
+  if (globalForPrisma.prisma) return globalForPrisma.prisma;
+  const client = createPrisma();
+  globalForPrisma.prisma = client;
+  return client;
+}

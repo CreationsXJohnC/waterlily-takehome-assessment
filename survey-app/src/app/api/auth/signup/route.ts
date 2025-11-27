@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import bcrypt from "bcryptjs";
+import { getPrisma } from "@/lib/prisma";
+import * as bcrypt from "bcryptjs";
 import { setAuthCookie } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {
+    const prisma = getPrisma();
     const { email, password, name } = await req.json();
     if (!email || !password) {
       return NextResponse.json({ error: "Email and password required" }, { status: 400 });
@@ -23,6 +24,9 @@ export async function POST(req: Request) {
   } catch (e) {
     const err: any = e;
     console.error("Signup error:", err);
+    if (err?.code === "MISSING_DATABASE_URL") {
+      return NextResponse.json({ error: "Missing DATABASE_URL for production. Set it in Vercel." }, { status: 503 });
+    }
     // Surface specific causes to aid debugging without leaking sensitive info.
     if (err?.code === "P1001") {
       return NextResponse.json({ error: "Database unreachable (P1001). Check DB URL/permissions." }, { status: 503 });
