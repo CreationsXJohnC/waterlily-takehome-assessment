@@ -12,7 +12,7 @@ export async function GET() {
       process.env.DATABASE_URL,
       process.env.POSTGRES_URL_NON_POOLING,
       process.env.POSTGRES_URL,
-    ].filter(Boolean);
+    ].filter((u): u is string => typeof u === "string");
     const url = urlCandidates.find((u) => /^postgres(ql)?:\/\//.test(u)) || "";
     return NextResponse.json({ ok: true, userCount: count, datasourceUrlDetected: Boolean(url) });
   } catch (e: any) {
