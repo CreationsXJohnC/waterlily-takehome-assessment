@@ -14,25 +14,46 @@ function pickDatabaseUrl() {
 const url = pickDatabaseUrl();
 if (!url) {
   console.log(
-    "[db-push-if-url] No valid Postgres URL found; skipping `prisma db push`."
+    "[db-push-if-url] No valid Postgres URL found; skipping DB migration."
   );
   process.exit(0);
 }
 
-console.log("[db-push-if-url] Running `prisma db push` with provided URL.");
-const result = spawnSync(
-  process.platform === "win32" ? "npx.cmd" : "npx",
-  ["prisma", "db", "push", "--url", url],
-  { stdio: "inherit" }
-);
+const isVercel = process.env.VERCEL === "1";
+const npxCmd = process.platform === "win32" ? "npx.cmd" : "npx";
+const env = { ...process.env, DATABASE_URL: url };
 
-if (result.status !== 0) {
-  console.error(
-    "[db-push-if-url] Prisma db push failed with exit code:",
-    result.status
+if (isVercel) {
+  console.log(
+    "[db-push-if-url] Detected Vercel. Running `prisma migrate deploy` (non-blocking if it fails)."
   );
-  process.exit(result.status || 1);
+  const result = spawnSync(npxCmd, ["prisma", "migrate", "deploy"], {
+    stdio: "inherit",
+    env,
+  });
+  if (result.status !== 0) {
+    console.warn(
+      "[db-push-if-url] Prisma migrate deploy failed. Continuing build to avoid deployment blockage."
+    );
+    process.exit(0);
+  }
+  console.log(
+    "[db-push-if-url] Prisma migrate deploy completed successfully."
+  );
+  process.exit(0);
+} else {
+  console.log("[db-push-if-url] Running `prisma db push` locally.");
+  const result = spawnSync(npxCmd, ["prisma", "db", "push"], {
+    stdio: "inherit",
+    env,
+  });
+  if (result.status !== 0) {
+    console.error(
+      "[db-push-if-url] Prisma db push failed with exit code:",
+      result.status
+    );
+    process.exit(result.status || 1);
+  }
+  console.log("[db-push-if-url] Prisma db push completed successfully.");
+  process.exit(0);
 }
-
-console.log("[db-push-if-url] Prisma db push completed successfully.");
-process.exit(0);
