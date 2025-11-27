@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
+import { ensureSchema } from "@/lib/ensureSchema";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,6 +20,7 @@ export async function GET() {
         { status: 503 }
       );
     }
+    await ensureSchema();
     const prisma = getPrisma();
     // Minimal query to verify connectivity and schema.
     const count = await prisma.user.count();

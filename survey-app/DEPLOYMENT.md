@@ -1,43 +1,17 @@
-Deployment to Vercel
+Deployment notes
 
-Overview
-- App runs on Next.js with Prisma 6.
-- Use Vercel Postgres (first-party) — no external accounts required.
-- Schema is applied during the Vercel build (`prisma db push && next build`).
+- Set `DATABASE_URL` to your production non-pooling Postgres URL (e.g., `postgres://...`).
+- Optionally set `POSTGRES_URL_NON_POOLING` and `POSTGRES_URL` to the same database.
+- Ensure variables are available at both Build and Runtime in Vercel.
+- The build script attempts `prisma migrate deploy` and falls back to `prisma db push` when a valid URL is present.
 
-Prerequisites
-- Vercel account and a project linked to this repo.
-- Vercel Postgres database created in the Vercel dashboard.
+Runtime self-healing (optional)
 
-Environment Variables (Vercel → Project → Settings → Environment Variables)
-- `DATABASE_URL`: set this to the value of `POSTGRES_PRISMA_URL` exposed by Vercel Postgres.
-- `JWT_SECRET`: a strong random string for signing tokens.
+- To enable a fallback that initializes the schema at runtime if tables are missing, set `ENABLE_RUNTIME_MIGRATION=1` in Vercel.
+- When enabled, the API routes will attempt to apply migration SQL files once at runtime using a Postgres advisory lock.
+- This fallback is safe for simple deployments and only runs when Prisma reports `P2021` (table does not exist).
 
-Steps
-1) Create Vercel Postgres:
-   - In Vercel, go to `Storage → Postgres → Create Database`.
-   - On the database page, click `Expose envs to project` and select this app.
+Logs to expect
 
-2) Configure env vars:
-   - In your Vercel project settings, set `DATABASE_URL` to `POSTGRES_PRISMA_URL` (copy-paste the value).
-   - Add `JWT_SECRET` for both Production and Preview.
-
-3) Deploy:
-   - Push to `main` or trigger a deploy in Vercel.
-   - During build, Prisma will apply the schema to Vercel Postgres and generate the client.
-
-4) Verify:
-   - Visit the deployment URL.
-   - Sign up, log in, complete the survey, and review responses. Or run `BASE_URL=https://<your-vercel-domain> npm run verify` locally.
-
-Local Development
-- You can keep local SQLite for dev, but production uses Postgres.
-- To test against Vercel Postgres locally, set `DATABASE_URL` to your Vercel `POSTGRES_PRISMA_URL` in `.env.local`.
-- Install deps: `npm install`
-- Generate client: `npm run postinstall` (or `npx prisma generate`)
-- Apply schema: `npx prisma db push`
-- Start dev server: `npm run dev`
-
-Notes
-- Vercel's filesystem is ephemeral; SQLite files are not suitable in production.
-- Using Vercel Postgres avoids third-party accounts and keeps deployment simple.
+- Build logs include `[db-push-if-url]` lines indicating the detected database URL source.
+- Health check `GET /api/health/db` returns `{ ok: true }` when schema and connectivity are correct.

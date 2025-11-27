@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
+import { ensureSchema } from "@/lib/ensureSchema";
 import * as bcrypt from "bcryptjs";
 import { setAuthCookie } from "@/lib/auth";
 
@@ -8,6 +9,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {
+    await ensureSchema();
     const prisma = getPrisma();
     const { email, password, name } = await req.json();
     if (!email || !password) {
