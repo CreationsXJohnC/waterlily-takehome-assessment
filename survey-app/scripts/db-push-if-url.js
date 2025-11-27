@@ -47,16 +47,17 @@ if (isVercel) {
     });
     if (migrate.status !== 0) {
       console.warn(
-        "[db-push-if-url] Migrate deploy failed. Attempting fallback `prisma db push` and continuing build."
+        "[db-push-if-url] Migrate deploy failed. Attempting fallback `prisma db push`."
       );
       const push = spawnSync(npxCmd, ["prisma", "db", "push"], {
         stdio: "inherit",
         env,
       });
       if (push.status !== 0) {
-        console.warn(
-          "[db-push-if-url] Fallback db push failed. Continuing build to avoid blockage."
+        console.error(
+          "[db-push-if-url] Fallback db push failed. Failing build to ensure schema is applied before deploy."
         );
+        process.exit(push.status || 1);
       } else {
         console.log("[db-push-if-url] Fallback db push completed successfully.");
       }
@@ -72,9 +73,10 @@ if (isVercel) {
       env,
     });
     if (push.status !== 0) {
-      console.warn(
-        "[db-push-if-url] Prisma db push failed. Continuing build to avoid deployment blockage."
+      console.error(
+        "[db-push-if-url] Prisma db push failed. Failing build to ensure schema exists before deploy."
       );
+      process.exit(push.status || 1);
     } else {
       console.log("[db-push-if-url] Prisma db push completed successfully.");
     }
