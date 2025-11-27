@@ -13,15 +13,21 @@ function pickDatabaseUrl() {
   return valid || null;
 }
 
+const isVercel = process.env.VERCEL === "1";
 const url = pickDatabaseUrl();
 if (!url) {
+  if (isVercel) {
+    console.error(
+      "[db-push-if-url] No valid Postgres URL at build. Set `DATABASE_URL` (prefer non-pooling) or `POSTGRES_URL_NON_POOLING` in Vercel Production env and expose at Build."
+    );
+    process.exit(1);
+  }
   console.log(
     "[db-push-if-url] No valid Postgres URL found; skipping DB migration."
   );
   process.exit(0);
 }
 
-const isVercel = process.env.VERCEL === "1";
 const npxCmd = process.platform === "win32" ? "npx.cmd" : "npx";
 const env = { ...process.env, DATABASE_URL: url };
 
