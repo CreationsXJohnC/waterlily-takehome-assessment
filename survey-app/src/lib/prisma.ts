@@ -2,6 +2,17 @@ import { createRequire } from "module";
 
 const globalForPrisma = global as unknown as { prisma?: any };
 
+function resolveDatasourceUrl(): string {
+  // Prefer Postgres URLs in production; allow libsql:// during local dev.
+  const candidates = [
+    process.env.DATABASE_URL,
+    process.env.POSTGRES_URL_NON_POOLING,
+    process.env.POSTGRES_URL,
+  ].filter(Boolean) as string[];
+  const chosen = candidates.find((u) => /^postgres(ql)?:\/\//.test(u) || u.startsWith("libsql://") || u.startsWith("file:"));
+  return chosen || "";
+}
+
 function createPrisma() {
   // Ensure Prisma uses the Node-API engine locally instead of the "client" engine.
   // The "client" engine requires an adapter or Accelerate URL, which we don't use for SQLite dev.
@@ -12,7 +23,7 @@ function createPrisma() {
   // Use eval("require") to prevent Next/Turbopack from statically analyzing
   // libSQL dependencies during local dev with SQLite.
   const dynamicRequire = (id: string) => (eval("require") as any)(id);
-  const url = process.env.DATABASE_URL || "";
+  const url = resolveDatasourceUrl();
   let adapter: any = undefined;
 
   if (url && url.startsWith("libsql://")) {
@@ -40,10 +51,12 @@ function createPrisma() {
     });
   }
 
-  // Without libSQL adapter, fall back to a plain client.
-  return new PrismaClient({
+  // Without libSQL adapter, fall back to a plain client with runtime datasource URL override.
+  const client = new PrismaClient({
     log: ["error"],
+    datasourceUrl: url || undefined,
   });
+  return client;
 }
 
 export const prisma = globalForPrisma.prisma ?? createPrisma();
