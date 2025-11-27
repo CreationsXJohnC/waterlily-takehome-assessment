@@ -11,12 +11,10 @@ function resolveDatabaseUrl(): string {
   ].filter(Boolean) as string[];
 
   const url = candidates.find((u) => /^postgres(ql)?:\/\//.test(u));
-  if (!url) {
-    throw new Error(
-      "Missing or invalid database URL. Set `DATABASE_URL` or expose `POSTGRES_URL_NON_POOLING`/`POSTGRES_URL` with a postgres:// or postgresql:// scheme."
-    );
-  }
-  return url;
+  if (url) return url;
+  // During Vercel install, env vars may not be injected yet.
+  // Provide a valid-scheme placeholder so `prisma generate` can proceed.
+  return "postgresql://placeholder.invalid/postgres?sslmode=require";
 }
 
 export default defineConfig({
