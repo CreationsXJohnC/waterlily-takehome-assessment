@@ -2,20 +2,23 @@
   "name": "survey-app",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma db push && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "prisma generate",
+    "verify": "node scripts/verify-deploy.js"
   },
   "dependencies": {
-    "@prisma/adapter-better-sqlite3": "^7.0.1",
-    "@prisma/client": "^7.0.1",
+    "@prisma/client": "^6.19.0",
     "bcrypt": "^6.0.0",
-    "better-sqlite3": "^12.4.6",
     "jsonwebtoken": "^9.0.2",
     "next": "16.0.4",
-    "prisma": "^7.0.1",
+    "prisma": "^6.19.0",
     "react": "19.2.0",
     "react-dom": "19.2.0"
   },
@@ -30,5 +33,6 @@
     "eslint-config-next": "16.0.4",
     "tailwindcss": "^4",
     "typescript": "^5"
-  }
+  },
+  "optionalDependencies": {}
 }
