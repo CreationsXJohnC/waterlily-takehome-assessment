@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { setAuthCookie } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -26,6 +26,9 @@ export async function POST(req: Request) {
     // Surface specific causes to aid debugging without leaking sensitive info.
     if (err?.code === "P1001") {
       return NextResponse.json({ error: "Database unreachable (P1001). Check DB URL/permissions." }, { status: 503 });
+    }
+    if (err?.code === "P2021" || /Table .* does not exist/.test(String(err?.message || ""))) {
+      return NextResponse.json({ error: "Database schema missing tables. Ensure `prisma db push` ran against production DB." }, { status: 500 });
     }
     if (err?.code === "P2002") {
       // Unique constraint; can happen due to race.
