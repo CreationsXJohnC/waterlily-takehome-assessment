@@ -5,10 +5,9 @@ import { getPrisma } from "@/lib/prisma";
 /**
  * Best-effort runtime schema initializer.
  *
- * When ENABLE_RUNTIME_MIGRATION=1 and the primary tables are missing (P2021),
- * apply Prisma migration SQL files sequentially using a Postgres advisory lock.
- * This is a fallback to make redeploys self-healing when build-time DB URL
- * was not available. It only runs once per instance when needed.
+ * When primary tables are missing (Prisma P2021), apply Prisma migration SQL
+ * files sequentially using a Postgres advisory lock. This makes redeploys
+ * self-healing if build-time DB URL was unavailable. Runs only when needed.
  */
 export async function ensureSchema(): Promise<void> {
   const prisma = getPrisma();
