@@ -8,7 +8,9 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // Use a valid-scheme placeholder to satisfy schema validation during install.
+  // Actual runtime/build URL is provided via prisma.config.ts.
+  url      = "postgresql://placeholder.invalid/postgres?sslmode=require"
 }
 
 model User {
