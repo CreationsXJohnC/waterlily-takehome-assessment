@@ -53,6 +53,22 @@ if (!url) {
   process.exit(0);
 }
 
+// Treat placeholder or obviously invalid hosts as missing configuration during Vercel build.
+const invalidHosts = new Set(["placeholder.invalid", "example.com", "localhost"]);
+const hostLooksInvalid = (() => {
+  const h = (meta && meta.host) || "";
+  if (!h) return true;
+  if (invalidHosts.has(h)) return true;
+  if (h.endsWith(".invalid")) return true;
+  return false;
+})();
+if (isVercel && hostLooksInvalid) {
+  console.error(
+    `[db-push-if-url] Invalid DB host '${meta?.host}'. Refusing to build with placeholder/non-production URL. Set a real Production Postgres URL and expose at Build.`
+  );
+  process.exit(1);
+}
+
 const npxCmd = process.platform === "win32" ? "npx.cmd" : "npx";
 const env = { ...process.env, DATABASE_URL: url };
 

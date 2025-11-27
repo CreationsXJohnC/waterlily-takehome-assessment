@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
+import { ensureSchema } from "@/lib/ensureSchema";
 import { getAuthPayload } from "@/lib/auth";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,6 +9,7 @@ export async function GET() {
   try {
     const auth = await getAuthPayload();
     if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    await ensureSchema();
     const prisma = getPrisma();
     const data = await prisma.response.findMany({
       where: { userId: auth.userId },

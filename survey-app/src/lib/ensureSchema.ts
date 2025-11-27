@@ -11,7 +11,6 @@ import { getPrisma } from "@/lib/prisma";
  * was not available. It only runs once per instance when needed.
  */
 export async function ensureSchema(): Promise<void> {
-  if (process.env.ENABLE_RUNTIME_MIGRATION !== "1") return;
   const prisma = getPrisma();
   try {
     // If we can query the User table, schema exists.

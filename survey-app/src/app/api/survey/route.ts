@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
+import { ensureSchema } from "@/lib/ensureSchema";
 import { getAuthPayload } from "@/lib/auth";
 import { QUESTIONS } from "@/lib/surveyQuestions";
 export const runtime = "nodejs";
@@ -9,6 +10,7 @@ export async function GET() {
   try {
     const auth = await getAuthPayload();
     if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    await ensureSchema();
     const prisma = getPrisma();
 
     // Ensure a survey exists that matches the frontend QUESTIONS
